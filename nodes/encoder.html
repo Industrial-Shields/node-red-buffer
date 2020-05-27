@@ -1,0 +1,154 @@
+<script type="text/javascript">
+	var types = [
+		{n: 'Int8', t: 'Int8'},
+		{n: 'Int16 BE', t: 'Int16BE'},
+		{n: 'Int16 LE', t: 'Int16LE'},
+		{n: 'Int32 BE', t: 'Int32BE'},
+		{n: 'Int32 LE', t: 'Int32LE'},
+		{n: 'UInt8', t: 'UInt8'},
+		{n: 'UInt16 BE', t: 'UInt16BE'},
+		{n: 'UInt16 LE', t: 'UInt16LE'},
+		{n: 'UInt32 BE', t: 'UInt32BE'},
+		{n: 'UInt32 LE', t: 'UInt32LE'},
+	];
+	RED.nodes.registerType("buffer-encoder", {
+		category: "parser",
+		color: "#DEBD5C",
+
+		defaults: {
+			name: { value: "" },
+			len: { value: 0, validate: RED.validators.number() },
+			rules: { value: [{t: 'Int8', n: ''}] },
+		},
+
+		inputs: 1,
+		outputs: 1,
+
+		icon: "parser-json.svg",
+		align: "left",
+		labelStyle: "node_label",
+		label: function() {
+			return this.name || "buffer";
+		},
+		paletteLabel: function() {
+			return this.name || "buffer";
+		},
+		oneditresize: function(size) {
+			$('#node-input-rules-container').editableList('width', size.width);
+		},
+		oneditprepare: function() {
+			function resizeRule(row) {
+				var newWidth = row.width();
+				console.log('new width', newWidth);
+				row.find('.rule-property').width(newWidth - 180);
+			}
+
+			var nodeInputRules = $('#node-input-rules-container');
+			nodeInputRules.css('min-height', '400px').css('min-width', '400px').editableList({
+				sortable: true,
+				removable: true,
+				resizeItem: resizeRule,
+				addItem: function(row, index, data) {
+					if (!data.hasOwnProperty('rule')) {
+						data.rule = {};
+					}
+					var rule = data.rule;
+					if (!rule.hasOwnProperty('t')) {
+						rule.t = '';
+					}
+					if (!rule.hasOwnProperty('n')) {
+						rule.n = '';
+					}
+					if (!rule.hasOwnProperty('o')) {
+						rule.o = 0;
+					}
+					row.css({
+						overflow: 'hidden',
+						whiteSpace: 'nowrap'
+					});
+
+					var row1 = $('<div />').appendTo(row);
+					var row2 = $('<div />', {style: "margin-top:8px"}).appendTo(row);
+
+					// The data type (t)
+					var typeSelect = $('<select/>', {name: 'type', style:"width:100px; margin-right:10px;"}).appendTo(row1);
+					types.forEach(function(type) {
+							typeSelect.append($('<option></option>').val(type.t).text(type.n));
+					});
+					typeSelect.val(rule.t);
+
+					// Some text
+					$('<div />', {style:"display:inline-block;text-align:right; width:50px; padding-right:10px; box-sizing:border-box;"}).text('named').appendTo(row1);
+
+					// The name property (n)
+					var nameInput = $('<input />', {type: 'text', name: 'name', placeholder: 'Name', class: 'rule-property'}).appendTo(row1);
+					nameInput.val(rule.n);
+
+					// Some text
+					$('<div />', {style:"display:inline-block;text-align:right; width:160px; padding-right:10px; box-sizing:border-box;"}).text('with offset').appendTo(row2);
+
+					// The offset property (o)
+					var offsetInput = $('<input />', {type: 'number', name: 'offset', placeholder: 'Offset', class: 'rule-property'}).appendTo(row2);
+					offsetInput.val(rule.o);
+
+					resizeRule(row);
+				},
+			});
+
+			for (var i = 0; i < this.rules.length; ++i) {
+				var rule = this.rules[i];
+				nodeInputRules.editableList('addItem', {rule: rule});
+			}
+		},
+		oneditsave: function() {
+			var node = this;
+			node.rules = [];
+			node.len = parseInt(node.len);
+			$('#node-input-rules-container').editableList('items').each(function(i) {
+				var row = $(this);
+				var r = {
+					t: row.find('select[name=type]').val(),
+					n: row.find('input[name=name]').val(),
+					o: parseInt(row.find('input[name=offset]').val())
+				}
+				node.rules.push(r);
+			});
+		}
+	});
+</script>
+
+<script type="text/x-red" data-template-name="buffer-encoder">
+	<div class="form-row">
+		<label for="node-input-name">Name</label>
+		<input type="text" id="node-input-name" placeholder="Name">
+	</div>
+	<div class="form-row">
+		<label for="node-input-len">Buffer length</label>
+		<input type="number" id="node-input-len" placeholder="Buffer length">
+	</div>
+	<div class="form-row">
+		<ol id="node-input-rules-container"></ol>
+	</div>
+</script>
+
+<script type="text/x-red" data-help-name="buffer-encoder">
+    <p>Converts between a Buffer and its JavaScript object representation, in either direction.</p>
+    <h3>Inputs</h3>
+    <dl class="message-properties">
+        <dt>payload<span class="property-type">object | Buffer</span></dt>
+        <dd>A JavaScript object or Buffer.</dd>
+    </dl>
+    <h3>Outputs</h3>
+    <dl class="message-properties">
+        <dt>payload<span class="property-type">object | Buffer</span></dt>
+        <dd>
+            <ul>
+                <li>If the input is a Buffer it tries to decode it to a JavaScript object.</li>
+                <li>If the input is a JavaScript object it creates a Buffer.</li>
+            </ul>
+        </dd>
+    </dl>
+	<h3>Details</h3>
+	<p>You can specify the relationship between JavaScript object properties and Buffer data
+	defining its property type, name and offset into the Buffer data.</p>
+</script>
